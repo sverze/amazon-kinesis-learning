@@ -1,0 +1,237 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Creates a Kinesis Stream and supporting DynamoDB table",
+    "Parameters": {
+        "CustomResourceMetaData": {
+            "Description": "Meta data required for handling the custom resource that provisions this product",
+            "Type": "String",
+            "Default": ""
+        },
+        "StreamName": {
+            "Description": "Enter the name of the stream. This will also be used to name the DynamoDB table used to maintain state in the Kinesis Client Library",
+            "Type": "String",
+            "AllowedPattern": "[a-zA-Z0-9_.-]+"
+        },
+        "RetentionPeriodHours": {
+            "Description": "Number of hours to retain messages in the stream",
+            "Type": "Number",
+            "Default": "24"
+        },
+        "ShardCount": {
+            "Description": "Number of shards",
+            "Type": "Number",
+            "Default": "3",
+            "MaxValue": "500",
+            "MinValue": "1"
+        },
+        "KmsMasterKeyArn": {
+            "Description": "Enter the KMS master key ARN used for SSE",
+            "Type": "String",
+            "AllowedPattern": "^.+$"
+        },
+        "StreamAccessNames": {
+            "Description": "Enter the names (not ARNs) for the stream read/write roles as comma delimited list",
+            "Type": "CommaDelimitedList"
+        },
+        "ConsumerNames": {
+            "Description": "Enter the names of the consumer applications as passed to Kinesis Client Library. This creates DynamoDB tables for each consumer to maintain processing state",
+            "Type": "CommaDelimitedList"
+        }
+    },
+    "Resources": {
+        "KinesisStream": {
+            "Type": "AWS::Kinesis::Stream",
+            "Properties": {
+                "Name": {
+                    "Ref": "StreamName"
+                },
+                "RetentionPeriodHours": {
+                    "Ref": "RetentionPeriodHours"
+                },
+                "ShardCount": {
+                    "Ref": "ShardCount"
+                },
+                "StreamEncryption": {
+                    "EncryptionType": "KMS",
+                    "KeyId": {
+                        "Ref": "KmsMasterKeyArn"
+                    }
+                },
+                "Tags": [
+
+                ]
+            }
+        },
+        "KCLDynamoDBTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "TableName": {"Ref": "StreamName"},
+                "AttributeDefinitions": [{
+                    "AttributeName": "leaseKey",
+                    "AttributeType": "S"
+                }],
+                "KeySchema": [{
+                    "AttributeName": "leaseKey",
+                    "KeyType": "HASH"
+                }],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "10",
+                    "WriteCapacityUnits": "5"
+                }
+            }
+        },
+        "RolePolicies": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": {"Fn::Join" :["-", [{"Ref": "AWS::Region"}, "KinesisPolicy"]]},
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Action": [
+                            "kinesis:ListStreams",
+                            "kinesis:SplitShard",
+                            "kinesis:DescribeStream",
+                            "kinesis:GetRecords",
+                            "kinesis:PutRecord",
+                            "kinesis:GetShardIterator",
+                            "kinesis:DescribeLimits",
+                            "kinesis:PutRecords",
+                            "kinesis:UpdateShardCount",
+                            "kinesis:MergeShards"
+                        ],
+                        "Resource": {
+                            "Fn::GetAtt": ["KinesisStream", "Arn"]
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "dynamodb:ListStreams",
+                            "dynamodb:Query",
+                            "dynamodb:DeleteItem",
+                            "dynamodb:DescribeTable",
+                            "dynamodb:GetRecords",
+                            "dynamodb:GetShardIterator",
+                            "dynamodb:GetItem",
+                            "dynamodb:DescribeTimeToLive",
+                            "dynamodb:BatchGetItem",
+                            "dynamodb:BatchWriteItem",
+                            "dynamodb:DescribeLimits",
+                            "dynamodb:UpdateItem",
+                            "dynamodb:ListTables",
+                            "dynamodb:PutItem",
+                            "dynamodb:Scan"
+                        ],
+                        "Resource": {
+                            "Fn::GetAtt": ["KCLDynamoDBTable", "Arn"]
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": "cloudwatch:PutMetricData",
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "kms:GenerateDataKey",
+                            "kms:Decrypt"
+                        ],
+                        "Resource": {
+                            "Ref": "KmsMasterKeyArn"
+                        }
+                    }
+                ]
+                },
+                "Roles": {
+                    "Ref": "StreamAccessNames"
+                }
+            }
+        },
+        "StreamProcessingAgeAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm when difference in most recently read message is significantly older than most recently written message",
+                "Namespace": "AWS/Kinesis",
+                "MetricName": "GetRecords.IteratorAgeMilliseconds",
+                "Dimensions": [
+                    {
+                        "Name": "StreamName",
+                        "Value": {
+                            "Ref": "StreamName"
+                        }
+                    }
+                ],
+                "Statistic": "Minimum",
+                "Period": "300",
+                "EvaluationPeriods": 1,
+                "Threshold": 60000,
+                "ComparisonOperator": "GreaterThanThreshold"
+            }
+        },
+        "StreamProcessingProvisionedReadAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm when read provisioned throughput errors get too high",
+                "Namespace": "AWS/Kinesis",
+                "MetricName": "ReadProvisionedThroughputExceeded",
+                "Dimensions": [
+                    {
+                        "Name": "StreamName",
+                        "Value": {
+                            "Ref": "StreamName"
+                        }
+                    }
+                ],
+                "Statistic": "Minimum",
+                "Period": "300",
+                "EvaluationPeriods": 1,
+                "Threshold": 5,
+                "ComparisonOperator": "GreaterThanThreshold"
+            }
+        },
+        "StreamProcessingProvisionedWriteAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm when read provisioned throughput errors get too high",
+                "Namespace": "AWS/Kinesis",
+                "MetricName": "WriteProvisionedThroughputExceeded",
+                "Dimensions": [
+                    {
+                        "Name": "StreamName",
+                        "Value": {
+                            "Ref" : "StreamName"
+                        }
+                    }
+                ],
+                "Statistic": "Minimum",
+                "Period": "300",
+                "EvaluationPeriods": 1,
+                "Threshold": 5,
+                "ComparisonOperator": "GreaterThanThreshold"
+            }
+        }
+    },
+    "Outputs": {
+        "StreamName": {
+            "Description": "Name of the stream",
+            "Value": {
+                "Ref": "KinesisStream"
+            }
+        },
+        "StreamArn": {
+            "Description": "ARN of the stream",
+            "Value": {
+                "Fn::GetAtt": [
+                    "KinesisStream",
+                    "Arn"
+                ]
+            }
+        }
+    },
+    "Metadata": {
+        "version": 1,
+        "md5": ""
+    }
+}

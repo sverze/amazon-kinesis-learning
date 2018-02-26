@@ -1,0 +1,125 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Creates permissions and supporting DynamoDB table required for DynamoDB consumers",
+    "Parameters": {
+        "CustomResourceMetaData": {
+            "Description": "Meta data required for handling the custom resource that provisions this product",
+            "Type": "String",
+            "Default": ""
+        },
+        "ConsumerName": {
+            "Description": "Enter the name of the consumer. This will be used to name the DynamoDB table used to maintain state in the Kinesis Client Library",
+            "Type": "String",
+            "AllowedPattern": "[a-zA-Z0-9_.-]+"
+        },
+        "KmsMasterKeyArn": {
+            "Description": "Enter the KMS master key ARN used for SSE",
+            "Type": "String",
+            "AllowedPattern": "^.+$"
+        },
+        "StreamAccessNames": {
+            "Description": "Enter the names (not ARNs) for the stream read/write roles as comma delimited list",
+            "Type": "CommaDelimitedList"
+        },
+        "StreamArn": {
+            "Description": "Enter the arn of the Kinesis stream you will be consuming from",
+            "Type": "CommaDelimitedList"
+        }
+    },
+    "Resources": {
+        "KCLDynamoDBTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "TableName": {"Ref": "ConsumerName"},
+                "AttributeDefinitions": [{
+                    "AttributeName": "leaseKey",
+                    "AttributeType": "S"
+                }],
+                "KeySchema": [{
+                    "AttributeName": "leaseKey",
+                    "KeyType": "HASH"
+                }],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "10",
+                    "WriteCapacityUnits": "5"
+                }
+            }
+        },
+        "RolePolicies": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": {"Fn::Join" :["-", [{"Ref": "AWS::Region"}, "KinesisPolicy", {"Ref": "ConsumerName"}]]},
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Action": [
+                            "kinesis:ListStreams",
+                            "kinesis:SplitShard",
+                            "kinesis:DescribeStream",
+                            "kinesis:GetRecords",
+                            "kinesis:PutRecord",
+                            "kinesis:GetShardIterator",
+                            "kinesis:DescribeLimits",
+                            "kinesis:PutRecords",
+                            "kinesis:UpdateShardCount",
+                            "kinesis:MergeShards"
+                        ],
+                        "Resource": {
+                            "Ref": "StreamArn"
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "dynamodb:ListStreams",
+                            "dynamodb:Query",
+                            "dynamodb:DeleteItem",
+                            "dynamodb:DescribeTable",
+                            "dynamodb:GetRecords",
+                            "dynamodb:GetShardIterator",
+                            "dynamodb:GetItem",
+                            "dynamodb:DescribeTimeToLive",
+                            "dynamodb:BatchGetItem",
+                            "dynamodb:BatchWriteItem",
+                            "dynamodb:DescribeLimits",
+                            "dynamodb:UpdateItem",
+                            "dynamodb:ListTables",
+                            "dynamodb:PutItem",
+                            "dynamodb:Scan"
+                        ],
+                        "Resource": {
+                            "Fn::GetAtt": ["KCLDynamoDBTable", "Arn"]
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": "cloudwatch:PutMetricData",
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "kms:GenerateDataKey",
+                            "kms:Decrypt"
+                        ],
+                        "Resource": {
+                            "Ref": "KmsMasterKeyArn"
+                        }
+                    }
+                ]
+                },
+                "Roles": {
+                    "Ref": "StreamAccessNames"
+                }
+            }
+        },
+
+    },
+    "Outputs": {
+    },
+    "Metadata": {
+        "version": 1,
+        "md5": ""
+    }
+}
