@@ -114,16 +114,23 @@ public class StockTradesWriter {
             System.exit(1);
         }
 
+        System.out.println("Creating Client Builder");
         AmazonKinesisClientBuilder clientBuilder = AmazonKinesisClientBuilder.standard();
         
         clientBuilder.setRegion(regionName);
 //        clientBuilder.setCredentials(CredentialUtils.getCredentialsProvider());
         clientBuilder.setClientConfiguration(ConfigurationUtils.getClientConfigWithUserAgent());
-        
+
+        System.out.println("Building Client Builder - " + clientBuilder);
+
         AmazonKinesis kinesisClient = clientBuilder.build();
+
+        System.out.println("Validating Stream - " + kinesisClient + " - " + streamName);
 
         // Validate that the stream exists and is active
         validateStream(kinesisClient, streamName);
+
+        System.out.println("Sending Stock Trade");
 
         // Repeatedly send stock trades with a 100 milliseconds wait in between
         StockTradeGenerator stockTradeGenerator = new StockTradeGenerator();
