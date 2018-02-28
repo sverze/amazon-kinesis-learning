@@ -1,0 +1,165 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+        "KinesisLaunchRole": {
+            "Type": "AWS::IAM::Role",
+            "Description": "Creates a launch role for creating Kinesis resources including Cloud Watch Alarms",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "cloudformation.amazonaws.com",
+                                    "servicecatalog.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/launchroles/services/cfn-launch/",
+                "Policies": [
+                    {
+                        "PolicyName": "kinesis-launch-policy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:GetRole",
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": "arn:aws:iam:::role/CloudWatch*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:DeleteRolePolicy",
+                                        "iam:GetRolePolicy",
+                                        "iam:PutRolePolicy"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kinesis:ListStreams",
+                                        "kinesis:EnableEnhancedMonitoring",
+                                        "kinesis:DecreaseStreamRetentionPeriod",
+                                        "kinesis:SplitShard",
+                                        "kinesis:AddTagsToStream",
+                                        "kinesis:ListTagsForStream",
+                                        "kinesis:CreateStream",
+                                        "kinesis:DescribeStream",
+                                        "kinesis:IncreaseStreamRetentionPeriod",
+                                        "kinesis:DisableEnhancedMonitoring",
+                                        "kinesis:DescribeLimits",
+                                        "kinesis:RemoveTagsFromStream",
+                                        "kinesis:DeleteStream",
+                                        "kinesis:UpdateShardCount",
+                                        "kinesis:MergeShards",
+                                        "kinesis:StartStreamEncryption",
+                                        "kinesis:StopStreamEncryption"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "dynamodb:CreateTable",
+                                        "dynamodb:DeleteTable",
+                                        "dynamodb:DescribeTable",
+                                        "dynamodb:ListTables",
+                                        "dynamodb:UpdateTable"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "kms:DescribeKey"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudwatch:CreateAlarm",
+                                        "cloudwatch:DeleteAlarms",
+                                        "cloudwatch:PutMetricAlarm"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:CreateStack",
+                                        "cloudformation:DeleteStack",
+                                        "cloudformation:UpdateStack",
+                                        "cloudformation:SetStackPolicy",
+                                        "cloudformation:DescribeStackEvents",
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:DescribeStackResource",
+                                        "cloudformation:DescribeStackResources",
+                                        "cloudformation:GetTemplate",
+                                        "cloudformation:GetTemplateSummary",
+                                        "cloudformation:List*"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "servicecatalog:DescribeRecord",
+                                        "servicecatalog:DescribeProduct",
+                                        "servicecatalog:DescribeProductView",
+                                        "servicecatalog:DescribeProvisioningParameters",
+                                        "servicecatalog:ListLaunchPaths",
+                                        "servicecatalog:ListRecordHistory",
+                                        "servicecatalog:ProvisionProduct",
+                                        "servicecatalog:SearchProducts",
+                                        "servicecatalog:ScanProvisionedProducts",
+                                        "servicecatalog:TerminateProvisionedProducts",
+                                        "servicecatalog:UpdateProvisionedProducts"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "KinesisLaunchRoleArn": {
+            "Description": "ARN of the Kinesis launch role",
+            "Value": {
+                "Fn::GetAtt": [
+                    "KinesisLaunchRole",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": "shared-iam-KinesisLaunchRole-arn"
+            }
+        }
+    },
+    "Metadata": {
+        "version": 1,
+        "md5": "c9cd4030c508649584df9b973d5c2ce2"
+    }
+}
