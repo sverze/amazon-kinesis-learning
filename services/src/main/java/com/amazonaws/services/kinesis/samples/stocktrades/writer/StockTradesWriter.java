@@ -57,7 +57,11 @@ public class StockTradesWriter {
      */
     private static void validateStream(AmazonKinesis kinesisClient, String streamName) {
         try {
+            System.out.println("Describing Kinesis Stream");
             DescribeStreamResult result = kinesisClient.describeStream(streamName);
+
+            System.out.println("Checking Kinesis Stream Result");
+
             if(!"ACTIVE".equals(result.getStreamDescription().getStreamStatus())) {
                 System.err.println("Stream " + streamName + " is not active. Please wait a few moments and try again.");
                 System.exit(1);
@@ -119,7 +123,9 @@ public class StockTradesWriter {
         
         clientBuilder.setRegion(regionName);
 //        clientBuilder.setCredentials(CredentialUtils.getCredentialsProvider());
-        clientBuilder.setClientConfiguration(ConfigurationUtils.getClientConfigWithUserAgent());
+        clientBuilder.setClientConfiguration(ConfigurationUtils.getClientConfigWithUserAgent()
+                .withProxyHost("proxy.jpmchase.net")
+                .withProxyPort(8443));
 
         System.out.println("Building Client Builder - " + clientBuilder);
 
