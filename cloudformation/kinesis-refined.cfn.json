@@ -223,7 +223,7 @@
                     ]
                 },
                 "Roles": {
-                    "Ref": "StreamReadertRoleNames"
+                    "Ref": "StreamReaderRoleNames"
                 }
             }
         },
