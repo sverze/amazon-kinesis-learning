@@ -124,8 +124,9 @@ public class StockTradesWriter {
         clientBuilder.setRegion(regionName);
 //        clientBuilder.setCredentials(CredentialUtils.getCredentialsProvider());
         clientBuilder.setClientConfiguration(ConfigurationUtils.getClientConfigWithUserAgent()
-                .withProxyHost("proxy.jpmchase.net")
-                .withProxyPort(8443));
+//                .withProxyHost("proxy.jpmchase.net")
+//                .withProxyPort(8443)
+        );
 
         System.out.println("Building Client Builder - " + clientBuilder);
 

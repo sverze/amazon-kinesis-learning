@@ -87,9 +87,9 @@ public class StockTradesProcessor {
             new KinesisClientLibConfiguration(applicationName, streamName, credentialsProvider, workerId)
                 .withRegionName(region.getName())
                 .withCommonClientConfig(ConfigurationUtils.getClientConfigWithUserAgent()
-                    .withProxyHost("proxy.jpmchase.net")
-                    .withProxyPort(8443)
-                    .withNonProxyHosts())
+//                    .withProxyHost("proxy.jpmchase.net")
+//                    .withProxyPort(8443)
+                )
                 .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON)
                 .withCallProcessRecordsEvenForEmptyRecordList(true)
                 .withMaxRecords(10)// set to 10 to make it intentionally slow
